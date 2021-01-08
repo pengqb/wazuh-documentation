@@ -82,10 +82,24 @@ jQuery(function($) {
   checkLatestDocs();
 
   /* Creates the correct links to all the releases */
-  addVersions();
+  const documentHistory = addVersions();
   $(window).on('hashchange', function() {
     addVersions();
   });
+
+  /* Get proper path for the canonical */
+  const documentInReleases = Object.keys(documentHistory);
+  let canonicalRelease = documentInReleases[documentInReleases.length-1];
+  const canonicalPath = documentHistory[canonicalRelease];
+  if ( canonicalRelease == currentVersion ) {
+    canonicalRelease = 'current';
+  }
+
+  /* Link rel=canonical tag based on the selector */
+  const canonicalTag = !!document.querySelector('link[rel=\'canonical\']') ? document.querySelector('link[rel=\'canonical\']') : document.createElement('link');
+  canonicalTag.setAttribute('rel', 'canonical');
+  canonicalTag.setAttribute('href', document.location.protocol + '//' + document.location.host + '/' + canonicalRelease + canonicalPath);
+  document.head.appendChild(canonicalTag);
 
   /* Initialize the tooltip of bootstrap */
   $('#select-version [data-toggle="tooltip"]').tooltip();
@@ -105,7 +119,11 @@ jQuery(function($) {
         selected = i;
       }
     }
-    selectVersionCurrent.html(versions[selected].name);
+    if ( versions[selected] ) {
+      selectVersionCurrent.html(versions[selected].name);
+    } else {
+      selectVersionCurrent.html(DOCUMENTATION_OPTIONS.VERSION);
+    }
   }
 
   /**
@@ -147,10 +165,6 @@ jQuery(function($) {
     page = normalizeUrl(paramDivision[0]);
     param = paramDivision.length == 2 ? ('?'+paramDivision[1]) : '';
 
-    if (path == 'current' || path == '4.0' ) {
-      path = currentVersion;
-    }
-
     /* Creates the links to others versions */
     let href;
     let tooltip;
@@ -158,6 +172,16 @@ jQuery(function($) {
     let versionsClean = versions.map(function(i) {
       return (i.name).split(' (current)')[0];
     });
+
+    /* Fix for local */
+    if ( versionsClean.indexOf(path) == -1 && path.length > 5 ) {
+      page = '/' + path + page;
+      path = DOCUMENTATION_OPTIONS.VERSION;
+    }
+
+    if (path == 'current' || path == '4.0' ) {
+      path = currentVersion;
+    }
 
     /* Normalize URLs in arrays */
     for (let i = 0; i < versionsClean.length; i++) {
@@ -201,6 +225,7 @@ jQuery(function($) {
       }
     }
     selectVersionUl.html(ele);
+    return redirHistory;
   }
 
   /**
